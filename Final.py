@@ -10,7 +10,13 @@ from tensorflow.keras.callbacks import TensorBoard
 import time
 import pyttsx3
 import pickle
+import cvlib as cv
+from gtts import gTTS
+from googletrans import Translator
+import io
+import pygame
 engine = pyttsx3.init()
+from keras.preprocessing.image import img_to_array
 # res = [.7, 0.2, 0.1]
 
 from tensorflow.keras.models import load_model
@@ -23,6 +29,8 @@ model2 = model_dict['model']
 
 mp_holistic = mp.solutions.holistic 
 mp_drawing = mp.solutions.drawing_utils 
+
+model3 = load_model('gender.h5')
 
 
 def mediapipe_detection(image, model):
@@ -76,6 +84,91 @@ def prob_viz(res, actions, input_frame, colors):
         cv2.putText(output_frame, actions[num], (0, 85+num*40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2, cv2.LINE_AA)
         
     return output_frame
+
+#--------------------------------------------------
+genders = None
+
+def gender():
+    webcam = cv2.VideoCapture(0)
+    classes = ['man', 'woman']
+    threshold = 95
+    genders = None  # Initialize genders variable
+
+    while webcam.isOpened():
+        # Read frame from webcam
+        status, frame = webcam.read()
+
+        # Apply face detection
+        face, confidence = cv.detect_face(frame)
+
+        # Check if any face is detected
+        if len(face) > 0:
+            # Loop through detected faces
+            for idx, f in enumerate(face):
+                # Get corner points of face rectangle
+                (startX, startY) = f[0], f[1]
+                (endX, endY) = f[2], f[3]
+
+                # Draw rectangle over face
+                cv2.rectangle(frame, (startX, startY), (endX, endY), (0, 255, 0), 2)
+
+                # Crop the detected face region
+                face_crop = np.copy(frame[startY:endY, startX:endX])
+
+                if face_crop.shape[0] < 10 or face_crop.shape[1] < 10:
+                    continue
+
+                # Preprocessing for gender detection model
+                face_crop = cv2.resize(face_crop, (96, 96))
+                face_crop = face_crop.astype("float") / 255.0
+                face_crop = img_to_array(face_crop)
+                face_crop = np.expand_dims(face_crop, axis=0)
+
+                # Apply gender detection on face
+                conf = model3.predict(face_crop)[0]
+
+                # Get label with max accuracy
+                idx = np.argmax(conf)
+                label = classes[idx]
+
+                # Format label
+                label = "{}: {:.2f}%".format(label, conf[idx] * 100)
+
+                if conf[idx] * 100 > threshold:
+                    # Update gender and display label
+                    genders = classes[idx]
+                    Y = startY - 10 if startY - 10 > 10 else startY + 10
+                    cv2.putText(frame, label, (startX, Y), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+
+                    # Stop the loop if gender is detected
+                    break
+
+        # Display output
+        cv2.imshow("gender detection", frame)
+
+        # Press "Q" to stop
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+        # If gender is detected, break out of loop
+        if genders is not None:
+            print(f"Detected gender: {genders}")
+            break
+
+    # Release resources
+    webcam.release()
+    cv2.destroyAllWindows()
+
+    # Text-to-speech after detection is complete
+    if genders is not None:
+        engine.say(f"Detected Gender Type is {genders}")
+        engine.runAndWait()
+
+gender()
+
+# print(genders)
+
+
 
 
 def action_model():
