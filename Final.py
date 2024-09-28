@@ -77,13 +77,13 @@ def extract_keypoints(results):
     return np.concatenate([pose, face, lh, rh])
 
 colors = [(245,117,16), (117,245,16), (16,117,245)]
-def prob_viz(res, actions, input_frame, colors):
-    output_frame = input_frame.copy()
-    for num, prob in enumerate(res):
-        cv2.rectangle(output_frame, (0,60+num*40), (int(prob*100), 90+num*40), colors[num], -1)
-        cv2.putText(output_frame, actions[num], (0, 85+num*40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2, cv2.LINE_AA)
+# def prob_viz(res, actions, input_frame, colors):
+#     output_frame = input_frame.copy()
+#     for num, prob in enumerate(res):
+#         cv2.rectangle(output_frame, (0,60+num*40), (int(prob*100), 90+num*40), colors[num], -1)
+#         cv2.putText(output_frame, actions[num], (0, 85+num*40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2, cv2.LINE_AA)
         
-    return output_frame
+#     return output_frame
 
 #--------------------------------------------------
 genders = None
@@ -92,74 +92,52 @@ def gender():
     webcam = cv2.VideoCapture(0)
     classes = ['man', 'woman']
     threshold = 95
-    genders = None  # Initialize genders variable
+    genders = None  
 
     while webcam.isOpened():
-        # Read frame from webcam
         status, frame = webcam.read()
-
-        # Apply face detection
         face, confidence = cv.detect_face(frame)
 
-        # Check if any face is detected
         if len(face) > 0:
-            # Loop through detected faces
             for idx, f in enumerate(face):
-                # Get corner points of face rectangle
                 (startX, startY) = f[0], f[1]
                 (endX, endY) = f[2], f[3]
 
-                # Draw rectangle over face
                 cv2.rectangle(frame, (startX, startY), (endX, endY), (0, 255, 0), 2)
-
-                # Crop the detected face region
                 face_crop = np.copy(frame[startY:endY, startX:endX])
 
                 if face_crop.shape[0] < 10 or face_crop.shape[1] < 10:
                     continue
 
-                # Preprocessing for gender detection model
                 face_crop = cv2.resize(face_crop, (96, 96))
                 face_crop = face_crop.astype("float") / 255.0
                 face_crop = img_to_array(face_crop)
                 face_crop = np.expand_dims(face_crop, axis=0)
 
-                # Apply gender detection on face
                 conf = model3.predict(face_crop)[0]
-
-                # Get label with max accuracy
                 idx = np.argmax(conf)
                 label = classes[idx]
 
-                # Format label
                 label = "{}: {:.2f}%".format(label, conf[idx] * 100)
 
                 if conf[idx] * 100 > threshold:
-                    # Update gender and display label
                     genders = classes[idx]
                     Y = startY - 10 if startY - 10 > 10 else startY + 10
                     cv2.putText(frame, label, (startX, Y), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-
-                    # Stop the loop if gender is detected
                     break
 
-        # Display output
         cv2.imshow("gender detection", frame)
 
-        # Press "Q" to stop
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-        # If gender is detected, break out of loop
         if genders is not None:
             print(f"Detected gender: {genders}")
             break
 
-    # Release resources
     webcam.release()
     cv2.destroyAllWindows()
 
-    # Text-to-speech after detection is complete
     if genders is not None:
         engine.say(f"Detected Gender Type is {genders}")
         engine.runAndWait()
@@ -171,16 +149,82 @@ gender()
 
 
 
-def action_model():
+# def action_model():
     
-    action_text = "Switching to American Sign Lnaguage Model"
+#     action_text = "Switching to American Sign Lnaguage Model"
+#     DATA_PATH = os.path.join('MP_Data') 
+#     actions = np.array(['namaste', 'hello', 'thanks', 'ASL'])  
+#     no_sequences = 30
+#     sequence_length = 30
+
+#     sequence = []
+
+#     sentence = []
+#     threshold = 0.90
+
+#     cap = cv2.VideoCapture(0)
+    
+#     with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
+#         while cap.isOpened():
+
+            
+#             ret, frame = cap.read()
+#             image, results = mediapipe_detection(frame, holistic)
+
+#             draw_styled_landmarks(image, results)
+#             if results.right_hand_landmarks and results.face_landmarks:
+
+#                 keypoints = extract_keypoints(results)
+#                 sequence.append(keypoints)
+#                 sequence = sequence[-30:]
+
+#                 if len(sequence) == 30:
+#                     res = model.predict(np.expand_dims(sequence, axis=0))[0]
+
+#                     predicted_action = actions[np.argmax(res)]
+
+#                     if predicted_action == 'rahul':
+#                         cap.release()
+#                         cv2.destroyAllWindows()
+#                         engine.say(action_text)
+#                         engine.runAndWait()
+#                         sign_model()
+#                         continue  
+
+#                     if res[np.argmax(res)] > threshold:
+#                         if len(sentence) > 0:
+#                             if predicted_action != sentence[-1]:
+#                                 sentence.append(predicted_action)
+#                                 engine.say(predicted_action)
+#                                 engine.runAndWait()
+#                         else:
+#                             sentence.append(predicted_action)
+#                             engine.say(predicted_action)
+#                             engine.runAndWait()
+
+#                     if len(sentence) > 5:
+#                         sentence = sentence[-5:]
+
+#                     # image = prob_viz(res, actions, image, colors)
+
+#             # cv2.rectangle(image, (0,0), (640, 40), (245, 117, 16), -1)
+#             # cv2.putText(image, ' '.join(sentence), (3,30),
+#             #             cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+
+#             cv2.imshow('OpenCV Feed', image)
+#             if cv2.waitKey(10) & 0xFF == ord('q'):
+#                 break
+#                 cap.release()
+#                 cv2.destroyAllWindows()
+
+def action_model():
+    action_text = "Switching to American Sign Language Model"
     DATA_PATH = os.path.join('MP_Data') 
     actions = np.array(['namaste', 'hello', 'thanks', 'ASL'])  
     no_sequences = 30
     sequence_length = 30
 
     sequence = []
-
     sentence = []
     threshold = 0.90
 
@@ -188,56 +232,67 @@ def action_model():
     
     with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
         while cap.isOpened():
-
-            
             ret, frame = cap.read()
             image, results = mediapipe_detection(frame, holistic)
 
             draw_styled_landmarks(image, results)
-            if results.right_hand_landmarks and results.face_landmarks:
+            
+            # Check for face landmarks
+            if results.face_landmarks:
+                # Check for both hands (namaste) or just right hand (hello, thanks)
+                if results.right_hand_landmarks and results.left_hand_landmarks:
+                    # Both hands and face detected, check for "namaste"
+                    keypoints = extract_keypoints(results)
+                    sequence.append(keypoints)
+                    sequence = sequence[-30:]
 
-                keypoints = extract_keypoints(results)
-                sequence.append(keypoints)
-                sequence = sequence[-30:]
+                    if len(sequence) == 30:
+                        res = model.predict(np.expand_dims(sequence, axis=0))[0]
+                        predicted_action = actions[np.argmax(res)]
 
-                if len(sequence) == 30:
-                    res = model.predict(np.expand_dims(sequence, axis=0))[0]
-
-                    predicted_action = actions[np.argmax(res)]
-
-                    if predicted_action == 'thanks':
-                        cap.release()
-                        cv2.destroyAllWindows()
-                        engine.say(action_text)
-                        engine.runAndWait()
-                        sign_model()
-                        continue  
-
-                    if res[np.argmax(res)] > threshold:
-                        if len(sentence) > 0:
-                            if predicted_action != sentence[-1]:
+                        if predicted_action == 'namaste' and res[np.argmax(res)] > threshold:
+                            if len(sentence) > 0:
+                                if predicted_action != sentence[-1]:
+                                    sentence.append(predicted_action)
+                                    engine.say(predicted_action)
+                                    engine.runAndWait()
+                            else:
                                 sentence.append(predicted_action)
                                 engine.say(predicted_action)
                                 engine.runAndWait()
-                        else:
-                            sentence.append(predicted_action)
-                            engine.say(predicted_action)
-                            engine.runAndWait()
+                
+                elif results.right_hand_landmarks:
+                    # Only right hand and face detected, check for "hello" and "thanks"
+                    keypoints = extract_keypoints(results)
+                    sequence.append(keypoints)
+                    sequence = sequence[-30:]
 
-                    if len(sentence) > 5:
-                        sentence = sentence[-5:]
+                    if len(sequence) == 30:
+                        res = model.predict(np.expand_dims(sequence, axis=0))[0]
+                        predicted_action = actions[np.argmax(res)]
 
-                    image = prob_viz(res, actions, image, colors)
+                        if predicted_action in ['hello', 'thanks'] and res[np.argmax(res)] > threshold:
+                            if len(sentence) > 0:
+                                if predicted_action != sentence[-1]:
+                                    sentence.append(predicted_action)
+                                    engine.say(predicted_action)
+                                    engine.runAndWait()
+                            else:
+                                sentence.append(predicted_action)
+                                engine.say(predicted_action)
+                                engine.runAndWait()
 
-            cv2.rectangle(image, (0,0), (640, 40), (245, 117, 16), -1)
-            cv2.putText(image, ' '.join(sentence), (3,30),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+                if len(sentence) > 5:
+                    sentence = sentence[-5:]
 
+            # Display the image with the predictions
             cv2.imshow('OpenCV Feed', image)
             if cv2.waitKey(10) & 0xFF == ord('q'):
                 break
-                cap.release()
-                cv2.destroyAllWindows()
+
+    cap.release()
+    cv2.destroyAllWindows()
+
 
 def sign_model():
     sign_text = "Switching to Indian Sign Language Model"
@@ -365,8 +420,8 @@ def sign_model():
     
 
 
-# action_model()
-sign_model()
+action_model()
+# sign_model()
 
 
 
